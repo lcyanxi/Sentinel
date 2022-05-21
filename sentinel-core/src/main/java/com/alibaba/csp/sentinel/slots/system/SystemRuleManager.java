@@ -282,10 +282,7 @@ public final class SystemRuleManager {
     }
 
     /**
-     * Apply {@link SystemRule} to the resource. Only inbound traffic will be checked.
-     *
-     * @param resourceWrapper the resource.
-     * @throws BlockException when any system rule's threshold is exceeded.
+     * 系统校验
      */
     public static void checkSystem(ResourceWrapper resourceWrapper, int count) throws BlockException {
         if (resourceWrapper == null) {
@@ -296,36 +293,36 @@ public final class SystemRuleManager {
             return;
         }
 
-        // for inbound traffic only
+        // 只针对入口资源做校验，其它直接返回
         if (resourceWrapper.getEntryType() != EntryType.IN) {
             return;
         }
 
-        // total qps
+        // 全局 QPS 校验
         double currentQps = Constants.ENTRY_NODE == null ? 0.0 : Constants.ENTRY_NODE.passQps();
         if (currentQps + count > qps) {
             throw new SystemBlockException(resourceWrapper.getName(), "qps");
         }
 
-        // total thread
+        // 全局 线程数 校验
         int currentThread = Constants.ENTRY_NODE == null ? 0 : Constants.ENTRY_NODE.curThreadNum();
         if (currentThread > maxThread) {
             throw new SystemBlockException(resourceWrapper.getName(), "thread");
         }
-
+        // 全局平均 RT 校验
         double rt = Constants.ENTRY_NODE == null ? 0 : Constants.ENTRY_NODE.avgRt();
         if (rt > maxRt) {
             throw new SystemBlockException(resourceWrapper.getName(), "rt");
         }
 
-        // load. BBR algorithm.
+        // 全局 load 校验
         if (highestSystemLoadIsSet && getCurrentSystemAvgLoad() > highestSystemLoad) {
             if (!checkBbr(currentThread)) {
                 throw new SystemBlockException(resourceWrapper.getName(), "load");
             }
         }
 
-        // cpu usage
+        // 全局 CPU 使用率 校验
         if (highestCpuUsageIsSet && getCurrentCpuUsage() > highestCpuUsage) {
             throw new SystemBlockException(resourceWrapper.getName(), "cpu");
         }

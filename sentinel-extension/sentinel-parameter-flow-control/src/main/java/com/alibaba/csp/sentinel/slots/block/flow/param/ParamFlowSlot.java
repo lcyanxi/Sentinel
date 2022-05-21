@@ -34,14 +34,18 @@ import java.util.List;
 @Spi(order = -3000)
 public class ParamFlowSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
 
+    /**
+     * 负责热点参数限流
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args) throws Throwable {
+        // 如果没有设置热点规则 直接放行
         if (!ParamFlowRuleManager.hasRules(resourceWrapper.getName())) {
             fireEntry(context, resourceWrapper, node, count, prioritized, args);
             return;
         }
-
+        // 热点规则判断
         checkFlow(resourceWrapper, count, args);
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
@@ -63,6 +67,9 @@ public class ParamFlowSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
         }
     }
 
+    /**
+     * 热点规则判断： 采用令牌桶算法实现
+     */
     void checkFlow(ResourceWrapper resourceWrapper, int count, Object... args) throws BlockException {
         if (args == null) {
             return;

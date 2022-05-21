@@ -32,9 +32,13 @@ import com.alibaba.csp.sentinel.spi.Spi;
 @Spi(order = Constants.ORDER_SYSTEM_SLOT)
 public class SystemSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
 
+    /**
+     * 负责系统保护规则
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args) throws Throwable {
+        // 系统规则校验
         SystemRuleManager.checkSystem(resourceWrapper, count);
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
