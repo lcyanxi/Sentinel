@@ -116,15 +116,13 @@ public class CtSph implements Sph {
 
     private Entry entryWithPriority(ResourceWrapper resourceWrapper, int count, boolean prioritized, Object... args)
         throws BlockException {
+        // 获取 context
         Context context = ContextUtil.getContext();
         if (context instanceof NullContext) {
-            // The {@link NullContext} indicates that the amount of context has exceeded the threshold,
-            // so here init the entry only. No rule checking will be done.
             return new CtEntry(resourceWrapper, null, context);
         }
 
         if (context == null) {
-            // Using default context.
             context = InternalContextUtil.internalEnter(Constants.CONTEXT_DEFAULT_NAME);
         }
 
@@ -132,25 +130,21 @@ public class CtSph implements Sph {
         if (!Constants.ON) {
             return new CtEntry(resourceWrapper, null, context);
         }
-
+        // 获取 slot 执行链 同一个资源会创建一个执行链  放入缓存
         ProcessorSlot<Object> chain = lookProcessChain(resourceWrapper);
 
-        /*
-         * Means amount of resources (slot chain) exceeds {@link Constants.MAX_SLOT_CHAIN_SIZE},
-         * so no rule checking will be done.
-         */
         if (chain == null) {
             return new CtEntry(resourceWrapper, null, context);
         }
-
+        // 传教 Entry 并将 resource、chain、context 记录在 Entry 中
         Entry e = new CtEntry(resourceWrapper, chain, context);
         try {
+            // 执行 slotChain
             chain.entry(context, resourceWrapper, null, count, prioritized, args);
         } catch (BlockException e1) {
             e.exit(count, args);
             throw e1;
         } catch (Throwable e1) {
-            // This should not happen, unless there are errors existing in Sentinel internal.
             RecordLog.info("Sentinel unexpected exception", e1);
         }
         return e;
@@ -343,6 +337,7 @@ public class CtSph implements Sph {
     @Override
     public Entry entryWithType(String name, int resourceType, EntryType entryType, int count, boolean prioritized,
                                Object[] args) throws BlockException {
+        // 封装资源名称等信息
         StringResourceWrapper resource = new StringResourceWrapper(name, entryType, resourceType);
         return entryWithPriority(resource, count, prioritized, args);
     }

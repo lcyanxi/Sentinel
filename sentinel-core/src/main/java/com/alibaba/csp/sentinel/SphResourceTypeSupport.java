@@ -25,17 +25,7 @@ import com.alibaba.csp.sentinel.slots.system.SystemRule;
 public interface SphResourceTypeSupport {
 
     /**
-     * Record statistics and perform rule checking for the given resource with provided classification.
-     *
-     * @param name         the unique name of the protected resource
-     * @param resourceType the classification of the resource
-     * @param trafficType  the traffic type (inbound, outbound or internal). This is used
-     *                     to mark whether it can be blocked when the system is unstable,
-     *                     only inbound traffic could be blocked by {@link SystemRule}
-     * @param batchCount   the amount of calls within the invocation (e.g. batchCount=2 means request for 2 tokens)
-     * @param args         args for parameter flow control or customized slots
-     * @return the {@link Entry} of this invocation (used for mark the invocation complete and get context data)
-     * @throws BlockException if the block criteria is met
+     * 创建资源
      */
     Entry entryWithType(String name, int resourceType, EntryType trafficType, int batchCount, Object[] args)
         throws BlockException;

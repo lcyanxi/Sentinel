@@ -132,27 +132,13 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
      */
     private volatile Map<String, DefaultNode> map = new HashMap<String, DefaultNode>(10);
 
+    /**
+     * 负责构建簇点链路中的节点（DefaultNode） 将这些节点形成链路树
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, Object obj, int count, boolean prioritized, Object... args)
         throws Throwable {
-        /*
-         * It's interesting that we use context name rather resource name as the map key.
-         *
-         * Remember that same resource({@link ResourceWrapper#equals(Object)}) will share
-         * the same {@link ProcessorSlotChain} globally, no matter in which context. So if
-         * code goes into {@link #entry(Context, ResourceWrapper, DefaultNode, int, Object...)},
-         * the resource name must be same but context name may not.
-         *
-         * If we use {@link com.alibaba.csp.sentinel.SphU#entry(String resource)} to
-         * enter same resource in different context, using context name as map key can
-         * distinguish the same resource. In this case, multiple {@link DefaultNode}s will be created
-         * of the same resource name, for every distinct context (different context name) each.
-         *
-         * Consider another question. One resource may have multiple {@link DefaultNode},
-         * so what is the fastest way to get total statistics of the same resource?
-         * The answer is all {@link DefaultNode}s with same resource name share one
-         * {@link ClusterNode}. See {@link ClusterBuilderSlot} for detail.
-         */
+        // 尝试获取当前资源的 DefaultNode
         DefaultNode node = map.get(context.getName());
         if (node == null) {
             synchronized (this) {
@@ -161,16 +147,18 @@ public class NodeSelectorSlot extends AbstractLinkedProcessorSlot<Object> {
                     node = new DefaultNode(resourceWrapper, null);
                     HashMap<String, DefaultNode> cacheMap = new HashMap<String, DefaultNode>(map.size());
                     cacheMap.putAll(map);
+                    // key:contextName 这样不同链路进入相同资源  就会创建多个 DefaultNode
                     cacheMap.put(context.getName(), node);
                     map = cacheMap;
-                    // Build invocation tree
+                    // 当前节点加入上一节点的 child 中 这样就构成了调用链路树
                     ((DefaultNode) context.getLastNode()).addChild(node);
                 }
 
             }
         }
-
+        // context 中的 curNode (当前节点) 指针设置为新的 node
         context.setCurNode(node);
+        // 执行下一个 slot
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
 

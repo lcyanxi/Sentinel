@@ -51,30 +51,34 @@ import com.alibaba.csp.sentinel.slots.block.BlockException;
 @Spi(order = Constants.ORDER_STATISTIC_SLOT)
 public class StatisticSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
 
+    /**
+     * 负责统计实时调用数据，包括运行信息（访问次数、线程数、cpu）、来源信息等
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args) throws Throwable {
         try {
-            // Do some checking.
+            // 放行到下一个 slot 做限流、降级等判断
             fireEntry(context, resourceWrapper, node, count, prioritized, args);
 
-            // Request passed, add thread count and pass count.
+            // 请求通过了,线程计数器 +1 用作线程隔离
             node.increaseThreadNum();
+            // 请求计数器 +1 用作限流
             node.addPassRequest(count);
 
             if (context.getCurEntry().getOriginNode() != null) {
-                // Add count for origin node.
+                // 如果有 origin，来源计数器也都要 +1
                 context.getCurEntry().getOriginNode().increaseThreadNum();
                 context.getCurEntry().getOriginNode().addPassRequest(count);
             }
 
             if (resourceWrapper.getEntryType() == EntryType.IN) {
-                // Add count for global inbound entry node for global statistics.
+                // 如果是入口资源，还要给全局计数器 +1
                 Constants.ENTRY_NODE.increaseThreadNum();
                 Constants.ENTRY_NODE.addPassRequest(count);
             }
 
-            // Handle pass event with registered entry callback handlers.
+            // 请求通过后的回调
             for (ProcessorSlotEntryCallback<DefaultNode> handler : StatisticSlotCallbackRegistry.getEntryCallbacks()) {
                 handler.onPass(context, resourceWrapper, node, count, args);
             }

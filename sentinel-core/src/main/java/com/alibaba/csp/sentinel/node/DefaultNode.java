@@ -126,7 +126,9 @@ public class DefaultNode extends StatisticNode {
 
     @Override
     public void increaseThreadNum() {
+        // DefaultNode 的计数器, 代表当前链路的 计数器
         super.increaseThreadNum();
+        // ClusterNode 的计数器, 代表当前资源的 总计数器
         this.clusterNode.increaseThreadNum();
     }
 

@@ -73,10 +73,14 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
 
     private volatile ClusterNode clusterNode = null;
 
+    /**
+     * 负责构建某个资源的 ClusterNode
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args)
         throws Throwable {
+        // 判空 注意 ClusterNode 是共享成员变量 也就是说一个资源只有一个 ClusterNode 与链路无关
         if (clusterNode == null) {
             synchronized (lock) {
                 if (clusterNode == null) {
@@ -84,18 +88,16 @@ public class ClusterBuilderSlot extends AbstractLinkedProcessorSlot<DefaultNode>
                     clusterNode = new ClusterNode(resourceWrapper.getName(), resourceWrapper.getResourceType());
                     HashMap<ResourceWrapper, ClusterNode> newMap = new HashMap<>(Math.max(clusterNodeMap.size(), 16));
                     newMap.putAll(clusterNodeMap);
+                    // 放入缓存 可以是 nodeId 也就是 resource 名称
                     newMap.put(node.getId(), clusterNode);
 
                     clusterNodeMap = newMap;
                 }
             }
         }
+        // 将资源的 DefaultNode 与 ClusterNode 关联
         node.setClusterNode(clusterNode);
-
-        /*
-         * if context origin is set, we should get or create a new {@link Node} of
-         * the specific origin.
-         */
+        // 记录请求来源 将 origin 放入 entry
         if (!"".equals(context.getOrigin())) {
             Node originNode = node.getClusterNode().getOrCreateOriginNode(context.getOrigin());
             context.getCurEntry().setOriginNode(originNode);

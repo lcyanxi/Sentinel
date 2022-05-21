@@ -29,14 +29,6 @@ public interface ProcessorSlot<T> {
 
     /**
      * Entrance of this slot.
-     *
-     * @param context         current {@link Context}
-     * @param resourceWrapper current resource
-     * @param param           generics parameter, usually is a {@link com.alibaba.csp.sentinel.node.Node}
-     * @param count           tokens needed
-     * @param prioritized     whether the entry is prioritized
-     * @param args            parameters of the original call
-     * @throws Throwable blocked exception or unexpected error
      */
     void entry(Context context, ResourceWrapper resourceWrapper, T param, int count, boolean prioritized,
                Object... args) throws Throwable;

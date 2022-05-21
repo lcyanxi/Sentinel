@@ -34,21 +34,6 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
- * Since request may be reprocessed in flow if any forwarding or including or other action
- * happened (see {@link javax.servlet.ServletRequest#getDispatcherType()}) we will only 
- * deal with the initial request. So we use <b>reference count</b> to track in 
- * dispathing "onion" though which we could figure out whether we are in initial type "REQUEST".
- * That means the sub-requests which we rarely meet in practice will NOT be recorded in Sentinel.
- * <p>
- * How to implement a forward sub-request in your action:
- * <pre>
- * initalRequest() {
- *     ModelAndView mav = new ModelAndView();
- *     mav.setViewName("another");
- *     return mav;
- * }
- * </pre>
- * 
  * @author kaizi2009
  * @since 1.7.1
  */
@@ -88,20 +73,22 @@ public abstract class AbstractSentinelInterceptor implements HandlerInterceptor 
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
         throws Exception {
         try {
+            // 获取资源名称 一般是 controller 方法的 @RequestMapping 路径, 例如 /order/{orderId}
             String resourceName = getResourceName(request);
-
             if (StringUtil.isEmpty(resourceName)) {
                 return true;
             }
-            
             if (increaseReferece(request, this.baseWebMvcConfig.getRequestRefName(), 1) != 1) {
                 return true;
             }
-            
-            // Parse the request origin using registered origin parser.
+
+            // 从 request 中获取请求来源 后面做 授权规则判断用
             String origin = parseOrigin(request);
+            // 获取 contextName 默认是 sentinel_spring_web_context
             String contextName = getContextName(request);
+            // 创建 context
             ContextUtil.enter(contextName, origin);
+            // 创建资源 resourceName 为 controller 方法映射路径
             Entry entry = SphU.entry(resourceName, ResourceTypeConstants.COMMON_WEB, EntryType.IN);
             request.setAttribute(baseWebMvcConfig.getRequestAttributeName(), entry);
             return true;

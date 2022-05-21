@@ -20,7 +20,6 @@ package com.alibaba.csp.sentinel;
  * @since 1.7.0
  */
 public final class ResourceTypeConstants {
-
     public static final int COMMON = 0;
     public static final int COMMON_WEB = 1;
     public static final int COMMON_RPC = 2;

@@ -31,13 +31,6 @@ import java.util.function.BiConsumer;
 import static org.apache.dubbo.common.constants.CommonConstants.CONSUMER;
 
 /**
- * <p>Dubbo service consumer filter for Sentinel. Auto activated by default.</p>
- * <p>
- * If you want to disable the consumer filter, you can configure:
- * <pre>
- * &lt;dubbo:consumer filter="-sentinel.dubbo.consumer.filter"/&gt;
- * </pre>
- *
  * @author Carpenter Lee
  * @author Eric Zhao
  * @author Lin Liang
@@ -79,6 +72,7 @@ public class SentinelDubboConsumerFilter extends BaseSentinelDubboFilter {
             interfaceEntry = SphU.entry(interfaceResourceName, ResourceTypeConstants.COMMON_RPC, EntryType.OUT);
             methodEntry = SphU.entry(methodResourceName, ResourceTypeConstants.COMMON_RPC, EntryType.OUT,
                 invocation.getArguments());
+            // 调用 dubbo 服务提供者方法
             Result result = invoker.invoke(invocation);
             if (result.hasException()) {
                 Tracer.traceEntry(result.getException(), interfaceEntry);
@@ -86,6 +80,7 @@ public class SentinelDubboConsumerFilter extends BaseSentinelDubboFilter {
             }
             return result;
         } catch (BlockException e) {
+            // 触发限流、熔断
             return DubboAdapterGlobalConfig.getConsumerFallback().handle(invoker, invocation, e);
         } catch (RpcException e) {
             Tracer.traceEntry(e, interfaceEntry);

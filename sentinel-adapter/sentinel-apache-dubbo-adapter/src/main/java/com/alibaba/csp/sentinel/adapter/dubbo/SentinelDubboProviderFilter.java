@@ -30,14 +30,6 @@ import org.apache.dubbo.rpc.RpcException;
 import static org.apache.dubbo.common.constants.CommonConstants.PROVIDER;
 
 /**
- * <p>Apache Dubbo service provider filter that enables integration with Sentinel. Auto activated by default.</p>
- * <p>Note: this only works for Apache Dubbo 2.7.x or above version.</p>
- * <p>
- * If you want to disable the provider filter, you can configure:
- * <pre>
- * &lt;dubbo:provider filter="-sentinel.dubbo.provider.filter"/&gt;
- * </pre>
- *
  * @author Carpenter Lee
  * @author Eric Zhao
  */
@@ -71,12 +63,11 @@ public class SentinelDubboProviderFilter extends BaseSentinelDubboFilter {
         String interfaceResourceName = getInterfaceName(invoker, prefix);
         String methodResourceName = getMethodName(invoker, invocation, prefix);
         try {
-            // Only need to create entrance context at provider side, as context will take effect
-            // at entrance of invocation chain only (for inbound traffic).
             ContextUtil.enter(methodResourceName, origin);
             interfaceEntry = SphU.entry(interfaceResourceName, ResourceTypeConstants.COMMON_RPC, EntryType.IN);
             methodEntry = SphU.entry(methodResourceName, ResourceTypeConstants.COMMON_RPC, EntryType.IN,
                 invocation.getArguments());
+
             Result result = invoker.invoke(invocation);
             if (result.hasException()) {
                 Tracer.traceEntry(result.getException(), interfaceEntry);

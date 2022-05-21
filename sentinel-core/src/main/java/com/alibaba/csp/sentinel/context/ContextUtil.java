@@ -118,9 +118,12 @@ public class ContextUtil {
     }
 
     protected static Context trueEnter(String name, String origin) {
+        // 尝试获取 context
         Context context = contextHolder.get();
         if (context == null) {
+            // 如果为空 开始初始化
             Map<String, DefaultNode> localCacheNameMap = contextNameNodeMap;
+            // 尝试获取入口节点
             DefaultNode node = localCacheNameMap.get(name);
             if (node == null) {
                 if (localCacheNameMap.size() > Constants.MAX_CONTEXT_NAME_SIZE) {
@@ -135,10 +138,11 @@ public class ContextUtil {
                                 setNullContext();
                                 return NULL_CONTEXT;
                             } else {
+                                // 入口节点为空 初始化入口节点 EntranceNode
                                 node = new EntranceNode(new StringResourceWrapper(name, EntryType.IN), null);
-                                // Add entrance node.
+                                // 添加入口节点到 ROOT
                                 Constants.ROOT.addChild(node);
-
+                                // 将入口节点放入缓存
                                 Map<String, DefaultNode> newMap = new HashMap<>(contextNameNodeMap.size() + 1);
                                 newMap.putAll(contextNameNodeMap);
                                 newMap.put(name, node);
@@ -150,8 +154,10 @@ public class ContextUtil {
                     }
                 }
             }
+            // 创建 context 参数为： 入口节点 和 contextName
             context = new Context(node, name);
             context.setOrigin(origin);
+            // 放入 ThreadLocal
             contextHolder.set(context);
         }
 
