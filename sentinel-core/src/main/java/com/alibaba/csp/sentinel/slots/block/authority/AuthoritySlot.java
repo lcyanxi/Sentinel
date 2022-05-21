@@ -35,9 +35,13 @@ import com.alibaba.csp.sentinel.spi.Spi;
 @Spi(order = Constants.ORDER_AUTHORITY_SLOT)
 public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
 
+    /**
+     * 负责授权规则（来源控制）
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count, boolean prioritized, Object... args)
         throws Throwable {
+        // 校验黑白名单
         checkBlackWhiteAuthority(resourceWrapper, context);
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
     }
@@ -48,19 +52,19 @@ public class AuthoritySlot extends AbstractLinkedProcessorSlot<DefaultNode> {
     }
 
     void checkBlackWhiteAuthority(ResourceWrapper resource, Context context) throws AuthorityException {
+        // 获取授权规则
         Map<String, Set<AuthorityRule>> authorityRules = AuthorityRuleManager.getAuthorityRules();
-
         if (authorityRules == null) {
             return;
         }
-
         Set<AuthorityRule> rules = authorityRules.get(resource.getName());
         if (rules == null) {
             return;
         }
-
+        // 遍历规则并判断
         for (AuthorityRule rule : rules) {
             if (!AuthorityRuleChecker.passCheck(rule, context)) {
+                // 规则不通过 直接抛出异常
                 throw new AuthorityException(context.getOrigin(), rule);
             }
         }

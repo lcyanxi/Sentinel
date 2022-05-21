@@ -127,7 +127,9 @@ public final class ParamFlowChecker {
     static boolean passDefaultLocalCheck(ResourceWrapper resourceWrapper, ParamFlowRule rule, int acquireCount,
                                          Object value) {
         ParameterMetric metric = getParameterMetric(resourceWrapper);
+        // 用来记录剩余令牌数量
         CacheMap<Object, AtomicLong> tokenCounters = metric == null ? null : metric.getRuleTokenCounter(rule);
+        // 用来记录上一个请求的时间
         CacheMap<Object, AtomicLong> timeCounters = metric == null ? null : metric.getRuleTimeCounter(rule);
 
         if (tokenCounters == null || timeCounters == null) {
