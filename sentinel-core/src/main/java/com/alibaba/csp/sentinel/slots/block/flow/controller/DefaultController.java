@@ -45,10 +45,16 @@ public class DefaultController implements TrafficShapingController {
         return canPass(node, acquireCount, false);
     }
 
+    /**
+     * 快速失败流控规则判断
+     */
     @Override
     public boolean canPass(Node node, int acquireCount, boolean prioritized) {
+        // 计算目前位置窗口内以及存在的请求量
         int curCount = avgUsedTokens(node);
+        // 判断： 已使用请求量 + 需要的请求量（1） > 窗口的请求阀值
         if (curCount + acquireCount > count) {
+            // 大于 说明超出阀值 放回 false
             if (prioritized && grade == RuleConstant.FLOW_GRADE_QPS) {
                 long currentTime;
                 long waitInMs;

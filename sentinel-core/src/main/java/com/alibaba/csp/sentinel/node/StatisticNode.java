@@ -198,6 +198,7 @@ public class StatisticNode implements Node {
 
     @Override
     public double passQps() {
+        // 请求量 / 滑动窗口时间间隔 = QPS
         return rollingCounterInSecond.pass() / rollingCounterInSecond.getWindowIntervalInSec();
     }
 
@@ -244,6 +245,7 @@ public class StatisticNode implements Node {
 
     @Override
     public void addPassRequest(int count) {
+        //按秒级别计数 QPS
         rollingCounterInSecond.addPass(count);
         rollingCounterInMinute.addPass(count);
     }

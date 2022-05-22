@@ -37,6 +37,11 @@ public class ArrayMetric implements Metric {
 
     private final LeapArray<MetricBucket> data;
 
+    /**
+     * 计数器
+     * @param sampleCount  时间窗口的分隔数量, 默认为 2,就是把 1s 分隔为 2 个小时间窗
+     * @param intervalInMs 滑动窗口的时间间隔 默认为 1s
+     */
     public ArrayMetric(int sampleCount, int intervalInMs) {
         this.data = new OccupiableBucketLeapArray(sampleCount, intervalInMs);
     }
@@ -106,11 +111,13 @@ public class ArrayMetric implements Metric {
 
     @Override
     public long pass() {
+        // 获取当前窗口
         data.currentWindow();
         long pass = 0;
         List<MetricBucket> list = data.values();
 
         for (MetricBucket window : list) {
+            // 累加求和
             pass += window.pass();
         }
         return pass;
@@ -241,7 +248,9 @@ public class ArrayMetric implements Metric {
 
     @Override
     public void addPass(int count) {
+        // 获取当前时间所在的时间窗
         WindowWrap<MetricBucket> wrap = data.currentWindow();
+        // 计数器 +1
         wrap.value().addPass(count);
     }
 

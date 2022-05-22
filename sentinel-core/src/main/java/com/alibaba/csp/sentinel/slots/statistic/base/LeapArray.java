@@ -40,10 +40,10 @@ import com.alibaba.csp.sentinel.util.TimeUtil;
  */
 public abstract class LeapArray<T> {
 
-    protected int windowLengthInMs;
-    protected int sampleCount;
-    protected int intervalInMs;
-    private double intervalInSecond;
+    protected int windowLengthInMs;   // 小窗口的时间长度 默认是 500ms  值 = intervalInMs / sampleCount
+    protected int sampleCount;        // 滑动窗口内的 小窗口 数量， 默认为 2
+    protected int intervalInMs;       // 滑动窗口的时间间隔， 默认为 1000ms
+    private double intervalInSecond;  // 滑动窗口的时间间隔， 单位为秒 默认为 1
 
     protected final AtomicReferenceArray<WindowWrap<T>> array;
 
@@ -117,9 +117,9 @@ public abstract class LeapArray<T> {
         if (timeMillis < 0) {
             return null;
         }
-
+        // 计算当前时间对应的数组角标
         int idx = calculateTimeIdx(timeMillis);
-        // Calculate current bucket start time.
+        // 计算当前时间所在窗口的开始时间
         long windowStart = calculateWindowStart(timeMillis);
 
         /*
@@ -132,60 +132,22 @@ public abstract class LeapArray<T> {
         while (true) {
             WindowWrap<T> old = array.get(idx);
             if (old == null) {
-                /*
-                 *     B0       B1      B2    NULL      B4
-                 * ||_______|_______|_______|_______|_______||___
-                 * 200     400     600     800     1000    1200  timestamp
-                 *                             ^
-                 *                          time=888
-                 *            bucket is empty, so create new and update
-                 *
-                 * If the old bucket is absent, then we create a new bucket at {@code windowStart},
-                 * then try to update circular array via a CAS operation. Only one thread can
-                 * succeed to update, while other threads yield its time slice.
-                 */
+                // 创建新 window
                 WindowWrap<T> window = new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket(timeMillis));
                 if (array.compareAndSet(idx, null, window)) {
-                    // Successfully updated, return the created bucket.
+                    // 写入成功 放回新的 window
                     return window;
                 } else {
                     // Contention failed, the thread will yield its time slice to wait for bucket available.
                     Thread.yield();
                 }
             } else if (windowStart == old.windowStart()) {
-                /*
-                 *     B0       B1      B2     B3      B4
-                 * ||_______|_______|_______|_______|_______||___
-                 * 200     400     600     800     1000    1200  timestamp
-                 *                             ^
-                 *                          time=888
-                 *            startTime of Bucket 3: 800, so it's up-to-date
-                 *
-                 * If current {@code windowStart} is equal to the start timestamp of old bucket,
-                 * that means the time is within the bucket, so directly return the bucket.
-                 */
                 return old;
             } else if (windowStart > old.windowStart()) {
-                /*
-                 *   (old)
-                 *             B0       B1      B2    NULL      B4
-                 * |_______||_______|_______|_______|_______|_______||___
-                 * ...    1200     1400    1600    1800    2000    2200  timestamp
-                 *                              ^
-                 *                           time=1676
-                 *          startTime of Bucket 2: 400, deprecated, should be reset
-                 *
-                 * If the start timestamp of old bucket is behind provided time, that means
-                 * the bucket is deprecated. We have to reset the bucket to current {@code windowStart}.
-                 * Note that the reset and clean-up operations are hard to be atomic,
-                 * so we need a update lock to guarantee the correctness of bucket update.
-                 *
-                 * The update lock is conditional (tiny scope) and will take effect only when
-                 * bucket is deprecated, so in most cases it won't lead to performance loss.
-                 */
+                // 说明走了第二圈了
                 if (updateLock.tryLock()) {
                     try {
-                        // Successfully get the update lock, now we reset the bucket.
+                        // 获取并发锁 覆盖旧窗口并返回
                         return resetWindowTo(old, windowStart);
                     } finally {
                         updateLock.unlock();
@@ -195,7 +157,7 @@ public abstract class LeapArray<T> {
                     Thread.yield();
                 }
             } else if (windowStart < old.windowStart()) {
-                // Should not go through here, as the provided time is already behind.
+                // 这种情况不应该存在, 写这里只是以防万一
                 return new WindowWrap<T>(windowLengthInMs, windowStart, newEmptyBucket(timeMillis));
             }
         }
@@ -268,6 +230,8 @@ public abstract class LeapArray<T> {
     }
 
     public boolean isWindowDeprecated(long time, WindowWrap<T> windowWrap) {
+        // 当前时间 - 窗口开始时间 > 滑动窗口的最大间隔 (1s)
+        // 也就是锁 我们要统计的是 距离当前时间 1s 内的小窗口的 count 之和
         return time - windowWrap.windowStart() > intervalInMs;
     }
 
@@ -317,10 +281,7 @@ public abstract class LeapArray<T> {
     }
 
     /**
-     * Get aggregated value list for entire sliding window.
-     * The list will only contain value from "valid" buckets.
-     *
-     * @return aggregated value list for entire sliding window
+     * 获取所有的小窗口
      */
     public List<T> values() {
         return values(TimeUtil.currentTimeMillis());
@@ -332,9 +293,11 @@ public abstract class LeapArray<T> {
         }
         int size = array.length();
         List<T> result = new ArrayList<T>(size);
-
+        // 遍历 LeapArray
         for (int i = 0; i < size; i++) {
+            // 获取每一个小窗口
             WindowWrap<T> windowWrap = array.get(i);
+            // 判断这个小窗口是否在 滑动窗口时间范围内 （1s）
             if (windowWrap == null || isWindowDeprecated(timeMillis, windowWrap)) {
                 continue;
             }
