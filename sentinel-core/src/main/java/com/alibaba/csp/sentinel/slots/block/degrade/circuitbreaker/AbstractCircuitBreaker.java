@@ -66,12 +66,14 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
 
     @Override
     public boolean tryPass(Context context) {
-        // Template implementation.
+        // 判断状态机状态
         if (currentState.get() == State.CLOSED) {
+            // 如果是 close 状态  直接放行
             return true;
         }
         if (currentState.get() == State.OPEN) {
-            // For half-open state we allow a request for probing.
+            // 如果是 open 状态,断路器打开
+            // 继续判断 open 时间窗是否结束, 如果是则把状态从 open 切换到 half_open
             return retryTimeoutArrived() && fromOpenToHalfOpen(context);
         }
         return false;
@@ -83,6 +85,7 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
     abstract void resetStat();
 
     protected boolean retryTimeoutArrived() {
+        // 当前时间 > 下一次 halfOpen 的重试时间
         return TimeUtil.currentTimeMillis() >= nextRetryTimestamp;
     }
 
@@ -102,20 +105,17 @@ public abstract class AbstractCircuitBreaker implements CircuitBreaker {
     }
 
     protected boolean fromOpenToHalfOpen(Context context) {
+        // 基于 cas 修改状态 从 open 到 half_open
         if (currentState.compareAndSet(State.OPEN, State.HALF_OPEN)) {
+            // 状态变更的事件通知
             notifyObservers(State.OPEN, State.HALF_OPEN, null);
             Entry entry = context.getCurEntry();
-            entry.whenTerminate(new BiConsumer<Context, Entry>() {
-                @Override
-                public void accept(Context context, Entry entry) {
-                    // Note: This works as a temporary workaround for https://github.com/alibaba/Sentinel/issues/1638
-                    // Without the hook, the circuit breaker won't recover from half-open state in some circumstances
-                    // when the request is actually blocked by upcoming rules (not only degrade rules).
-                    if (entry.getBlockError() != null) {
-                        // Fallback to OPEN due to detecting request is blocked
-                        currentState.compareAndSet(State.HALF_OPEN, State.OPEN);
-                        notifyObservers(State.HALF_OPEN, State.OPEN, 1.0d);
-                    }
+            // 给资源设置监听器，在资源 Entry 销毁时(资源业务执行完毕时)触发
+            entry.whenTerminate((context1, entry1) -> {
+                if (entry1.getBlockError() != null) {
+                    // 如果异常, 则再次进入 open 状态
+                    currentState.compareAndSet(State.HALF_OPEN, State.OPEN);
+                    notifyObservers(State.HALF_OPEN, State.OPEN, 1.0d);
                 }
             });
             return true;
