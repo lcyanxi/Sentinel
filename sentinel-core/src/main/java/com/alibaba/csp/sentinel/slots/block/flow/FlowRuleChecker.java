@@ -46,9 +46,11 @@ public class FlowRuleChecker {
         if (ruleProvider == null || resource == null) {
             return;
         }
+        // 获取当前资源的所有限流规则
         Collection<FlowRule> rules = ruleProvider.apply(resource.getName());
         if (rules != null) {
             for (FlowRule rule : rules) {
+                // 遍历 逐个规则做校验
                 if (!canPassCheck(rule, context, node, count, prioritized)) {
                     throw new FlowException(rule.getLimitApp(), rule);
                 }
@@ -63,6 +65,7 @@ public class FlowRuleChecker {
 
     public boolean canPassCheck(/*@NonNull*/ FlowRule rule, Context context, DefaultNode node, int acquireCount,
                                                     boolean prioritized) {
+        // 获取限流资源名称
         String limitApp = rule.getLimitApp();
         if (limitApp == null) {
             return true;
@@ -71,17 +74,19 @@ public class FlowRuleChecker {
         if (rule.isClusterMode()) {
             return passClusterCheck(rule, context, node, acquireCount, prioritized);
         }
-
+        // 校验规则
         return passLocalCheck(rule, context, node, acquireCount, prioritized);
     }
 
     private static boolean passLocalCheck(FlowRule rule, Context context, DefaultNode node, int acquireCount,
                                           boolean prioritized) {
+        // 基于限流模式判断要统计的节点
+        // 如果是直接模式、关联模式 对 ClusterNode 统计,如果是链路模式 则对 DefaultNode 统计
         Node selectedNode = selectNodeByRequesterAndStrategy(rule, context, node);
         if (selectedNode == null) {
             return true;
         }
-
+        // 规则判断
         return rule.getRater().canPass(selectedNode, acquireCount, prioritized);
     }
 

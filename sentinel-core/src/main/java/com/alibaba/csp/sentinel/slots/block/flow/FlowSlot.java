@@ -158,9 +158,13 @@ public class FlowSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
         this.checker = checker;
     }
 
+    /**
+     * 负责限流规则
+     */
     @Override
     public void entry(Context context, ResourceWrapper resourceWrapper, DefaultNode node, int count,
                       boolean prioritized, Object... args) throws Throwable {
+        // 限流规则检测
         checkFlow(resourceWrapper, context, node, count, prioritized);
 
         fireEntry(context, resourceWrapper, node, count, prioritized, args);
@@ -168,6 +172,7 @@ public class FlowSlot extends AbstractLinkedProcessorSlot<DefaultNode> {
 
     void checkFlow(ResourceWrapper resource, Context context, DefaultNode node, int count, boolean prioritized)
         throws BlockException {
+        // checker 是 FlowRuleChecker 类的一个对象
         checker.checkFlow(ruleProvider, resource, context, node, count, prioritized);
     }
 

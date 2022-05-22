@@ -42,6 +42,9 @@ public class RateLimiterController implements TrafficShapingController {
         return canPass(node, acquireCount, false);
     }
 
+    /**
+     * 排队模式流控规则判断 【基于漏桶算法实现】
+     */
     @Override
     public boolean canPass(Node node, int acquireCount, boolean prioritized) {
         // Pass when acquire count is less or equal than 0.
@@ -55,24 +58,26 @@ public class RateLimiterController implements TrafficShapingController {
         }
 
         long currentTime = TimeUtil.currentTimeMillis();
-        // Calculate the interval between every two requests.
+        // 计算两次请求之间允许的最小时间间隔
         long costTime = Math.round(1.0 * (acquireCount) / count * 1000);
 
-        // Expected pass time of this request.
+        // 本次请求允许执行的时间点 = 最近一次请求的可执行时间 + 最小间隔
         long expectedTime = costTime + latestPassedTime.get();
-
+        // 如果允许执行的时间点小于当前时间, 说明可以立即执行
         if (expectedTime <= currentTime) {
-            // Contention may exist here, but it's okay.
+            // 更新上一次的请求的执行时间
             latestPassedTime.set(currentTime);
             return true;
         } else {
-            // Calculate the time to wait.
+            // 计算需要等待的时长
             long waitTime = costTime + latestPassedTime.get() - TimeUtil.currentTimeMillis();
+            // 如果预期等待时间超出阀值 则拒绝请求
             if (waitTime > maxQueueingTimeMs) {
                 return false;
             } else {
                 long oldTime = latestPassedTime.addAndGet(costTime);
                 try {
+                    // 在计算一次
                     waitTime = oldTime - TimeUtil.currentTimeMillis();
                     if (waitTime > maxQueueingTimeMs) {
                         latestPassedTime.addAndGet(-costTime);
@@ -80,6 +85,7 @@ public class RateLimiterController implements TrafficShapingController {
                     }
                     // in race condition waitTime may <= 0
                     if (waitTime > 0) {
+                        // 预期等待时间在阈值范围内，休眠要等待的时间，醒来后继续执行
                         Thread.sleep(waitTime);
                     }
                     return true;
