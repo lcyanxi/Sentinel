@@ -32,13 +32,6 @@ import com.alibaba.dubbo.rpc.RpcException;
 import static com.alibaba.dubbo.common.Constants.CONSUMER;
 
 /**
- * <p>Dubbo service consumer filter for Sentinel. Auto activated by default.</p>
- *
- * If you want to disable the consumer filter, you can configure:
- * <pre>
- * &lt;dubbo:consumer filter="-sentinel.dubbo.consumer.filter"/&gt;
- * </pre>
- *
  * @author leyou
  * @author Eric Zhao
  */

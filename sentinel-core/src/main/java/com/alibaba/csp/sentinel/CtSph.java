@@ -136,7 +136,7 @@ public class CtSph implements Sph {
         if (chain == null) {
             return new CtEntry(resourceWrapper, null, context);
         }
-        // 传教 Entry 并将 resource、chain、context 记录在 Entry 中
+        // 创建 Entry 并将 resource、chain、context 记录在 Entry 中
         Entry e = new CtEntry(resourceWrapper, chain, context);
         try {
             // 执行 slotChain
